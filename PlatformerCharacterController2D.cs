@@ -4,7 +4,6 @@ using UnityEngine.Events;
 
 // TODO Determinate physics (https://www.youtube.com/watch?v=hG9SzQxaCm8)
 // TODO Variable jump height
-// TODO Multi-jump support
 
 // STRETCH GOALS
 // Hitbox pinching (https://www.youtube.com/watch?v=HCnZhs-92j0)
@@ -38,9 +37,11 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	private float _coyoteTime = 0.1f;
 	[Range(0, 0.3f)] [SerializeField] [Tooltip("How early a player can input a jump before they hit the ground")]
 	private float _jumpBuffer = 0.2f;
+	[Range(0f, 1f)] [SerializeField] [Tooltip("Fraction of your base jump height used in extra jumps")]
+	private float _extraJumpHeight = 1f;
 	[Range(0, 0.3f)] [SerializeField]
 	private float _movementSmoothing = 0.05f;
-	[Range(0, 1f)] [SerializeField] [Tooltip("A how long before the player can jump again")]
+	[Min(0)] [SerializeField] [Tooltip("How long before the player can jump again")]
 	private float _jumpCooldown = 0.05f;
 	[SerializeField] [Tooltip("True if base sprite is facing right")]
 	private bool _spriteFacingRight = true;
@@ -174,8 +175,13 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	private void Jump() {
 		if (_canJump && (_jumpsRemaining > 0 || _coyoteBuffer > 0)) {
 			_isGrounded = false;
-			_rb.AddForce(new Vector2(0f, _jumpForce));
+			if (_jumpsRemaining < _totalJumps) {
+				_rb.AddForce(new Vector2(0f, _jumpForce * _extraJumpHeight));
+			} else {
+				_rb.AddForce(new Vector2(0f, _jumpForce));
+			}
 			_jumpsRemaining--;
+			StartCoroutine(JumpReset());
 		} else {
 			_jumpInputBuffer = _jumpBuffer;
 		}
