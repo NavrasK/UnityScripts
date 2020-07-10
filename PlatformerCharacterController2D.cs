@@ -1,10 +1,10 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
 // TODO Determinate physics (https://www.youtube.com/watch?v=hG9SzQxaCm8)
 // TODO Variable jump height
 // TODO Multi-jump support
-// TODO Public get state functions for interfacing with other scripts
 
 // STRETCH GOALS
 // Hitbox pinching (https://www.youtube.com/watch?v=HCnZhs-92j0)
@@ -24,10 +24,12 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	[Range(0.1f, 2f)] [SerializeField] [Tooltip("Height of the area used to determine if the character is touching the ground")]
 	private float _groundedBoxHeight = 0.25f;
 	[SerializeField]
-	private float _moveSpeeed = 400f;
+	private float _moveSpeed = 400f;
 	[SerializeField]
 	private float _jumpForce = 800f;
-	
+	[Min(0)] [SerializeField] [Tooltip("Number of jumps your player can execute without touching the ground by default")]
+	private int _totalJumps = 1;
+
 	// User tweakable values
 	[Header("Tweaks")] [Space]
 	[SerializeField] [Tooltip("If a player can change their trajectory in mid-air")]
@@ -38,6 +40,8 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	private float _jumpBuffer = 0.2f;
 	[Range(0, 0.3f)] [SerializeField]
 	private float _movementSmoothing = 0.05f;
+	[Range(0, 1f)] [SerializeField] [Tooltip("A how long before the player can jump again")]
+	private float _jumpCooldown = 0.05f;
 	[SerializeField] [Tooltip("True if base sprite is facing right")]
 	private bool _spriteFacingRight = true;
 	[SerializeField] [Tooltip("Show the bounding box for debugging / tweaking (make sure Gizmos are enabled)")]
@@ -46,22 +50,22 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	// Event system
 	[Header("Events")] [Space]
 	public UnityEvent OnLandEvent;
-	
+
 	// Movement variables
-	private bool _hasJumped = false;
+	private int _jumpsRemaining = 0;
 	private float _coyoteBuffer = 0f;
 	private float _jumpInputBuffer = 0f;
 	private float _horz = 0f;
 	private float _vert = 0f;
 	private bool _jump = false;
-	
+
 	// Core variables
-	const float _groundedRadius = 0.2f;
 	private bool _isGrounded;
+	private bool _canJump = true;
 	private Rigidbody2D _rb;
 	private SpriteRenderer _spr;
 	private Vector3 _velocity = Vector3.zero;
-	
+
 	private void Awake() {
 		_rb = GetComponent<Rigidbody2D>();
 		_spr = GetComponent<SpriteRenderer>();
@@ -75,7 +79,7 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 			OnLandEvent = new UnityEvent();
 		}
 	}
-	
+
 	private void Update() {
 		_horz = Input.GetAxisRaw("Horizontal");
 		_vert = Input.GetAxisRaw("Vertical");
@@ -87,14 +91,14 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		} else {
 			_jumpInputBuffer = 0;
 		}
-		
+
 		if (_coyoteBuffer > 0) {
 			_coyoteBuffer -= Time.deltaTime;
 		} else {
 			_coyoteBuffer = 0;
 		}
 	}
-	
+
 	private void FixedUpdate() {
 		CheckGround();
 		Move(_horz);
@@ -103,11 +107,11 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 			_jump = false;
 		}
 	}
-	
+
 	private void CheckGround() {
 		bool wasGrounded = _isGrounded;
 		// Centers boxcast on bottom of sprite
-		Vector2 boxcastCenter = new Vector2(_spr.bounds.center.x, _spr.bounds.center.y - _spr.bounds.size.y/2);
+		Vector2 boxcastCenter = new Vector2(_spr.bounds.center.x, _spr.bounds.center.y - _spr.bounds.size.y / 2);
 		Vector2 boxcastSize = new Vector2(_groundedBoxWidth, _groundedBoxHeight);
 		Collider2D[] colliders = Physics2D.OverlapBoxAll(boxcastCenter, boxcastSize, 0f, _groundLayer);
 		if (_showGizmos) {
@@ -125,14 +129,14 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 			_isGrounded = true;
 			if (!wasGrounded) {
 				OnLandEvent.Invoke();
-				if (_jumpInputBuffer > 0) { 
+				if (_jumpInputBuffer > 0) {
 					Jump();
 				}
 			}
-			_hasJumped = false;
+			_jumpsRemaining = _totalJumps;
 		} else {
 			_isGrounded = false;
-			if (wasGrounded && !_hasJumped && _coyoteTime > 0) {
+			if (wasGrounded && _jumpsRemaining > 0 && _coyoteTime > 0) {
 				_coyoteBuffer = _coyoteTime;
 			}
 		}
@@ -155,31 +159,54 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		Debug.DrawLine(tl, bl, rayColour, 0);
 		Debug.DrawLine(tr, br, rayColour, 0);
 	}
-	
+
 	private void Move(float dir) {
 		if (_isGrounded || _airControl) {
-			Vector3 targetVelocity = new Vector2(dir * _moveSpeeed * Time.deltaTime, _rb.velocity.y);
+			Vector3 targetVelocity = new Vector2(dir * _moveSpeed * Time.deltaTime, _rb.velocity.y);
 			_rb.velocity = Vector3.SmoothDamp(_rb.velocity, targetVelocity, ref _velocity, _movementSmoothing);
 		}
-		
+
 		if ((dir > 0 && !_spriteFacingRight) || (dir < 0 && _spriteFacingRight)) {
 			FlipSprite();
 		}
 	}
-	
+
 	private void Jump() {
-		if (_isGrounded || _coyoteBuffer > 0) {
+		if (_canJump && (_jumpsRemaining > 0 || _coyoteBuffer > 0)) {
 			_isGrounded = false;
 			_rb.AddForce(new Vector2(0f, _jumpForce));
+			_jumpsRemaining--;
 		} else {
 			_jumpInputBuffer = _jumpBuffer;
 		}
 	}
-	
+
+	IEnumerator JumpReset() {
+		_canJump = false;
+		yield return new WaitForSeconds(_jumpCooldown);
+		_canJump = true;
+    }
+
 	private void FlipSprite() {
 		_spriteFacingRight = !_spriteFacingRight;
 		Vector3 newScale = transform.localScale;
 		newScale.x *= -1;
 		transform.localScale = newScale;
 	}
+
+	public bool IsGrounded() {
+		return _isGrounded;
+    }
+
+	public bool FacingRight() {
+		return _spriteFacingRight;
+    }
+
+	public Vector3 GetVelocity() {
+		return _velocity;
+    }
+
+	public int RemainingJumps() {
+		return _jumpsRemaining;
+    }
 }
