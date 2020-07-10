@@ -215,4 +215,8 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 	public int RemainingJumps() {
 		return _jumpsRemaining;
     }
+
+	public bool IsMoving() {
+		return Mathf.Abs(_rb.velocity.x) > 0.01f;
+    }
 }
