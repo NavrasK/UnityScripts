@@ -9,6 +9,7 @@ using UnityEngine.Events;
 // Hitbox pinching (https://www.youtube.com/watch?v=HCnZhs-92j0)
 // One way platforms / fall through (only if grounded, and if held before becoming grounded, wait 0.2 sec) 
 // Crouch / slide
+// Wall jump / slide / ledge grab
 // Moving platform support
 
 [RequireComponent(typeof(Rigidbody2D))]
