@@ -112,7 +112,7 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		Collider2D[] colliders = Physics2D.OverlapBoxAll(boxcastCenter, boxcastSize, 0f, _groundLayer);
 		if (_showGizmos) {
 			ShowBoxGizmo(boxcastCenter, boxcastSize);
-        }
+		}
 		bool groundDetected = false;
 		// Check if it detected any collisions aside from itself
 		for (int i = 0; i < colliders.Length; i++) {
@@ -143,9 +143,9 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		Color rayColour;
 		if (_isGrounded) {
 			rayColour = Color.green;
-        } else {
+		} else {
 			rayColour = Color.red;
-        }
+		}
 		Vector3 tl = new Vector3(center.x - size.x / 2, center.y - size.y / 2, 0);
 		Vector3 bl = new Vector3(center.x - size.x / 2, center.y + size.y / 2, 0);
 		Vector3 tr = new Vector3(center.x + size.x / 2, center.y - size.y / 2, 0);
