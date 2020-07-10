@@ -1,12 +1,16 @@
 using UnityEngine;
 using UnityEngine.Events;
 
-// TODO Variable jump height
-// TODO Hitbox pinching (https://www.youtube.com/watch?v=HCnZhs-92j0)
-// TODO Improve slope handling / raycasting with boxcast (https://www.youtube.com/watch?v=c3iEl5AwUF8)
-// TODO One way platforms / fall through (only if grounded, and if held before becoming grounded, wait 0.2 sec)
-// TODO Moving platforms
 // TODO Determinate physics (https://www.youtube.com/watch?v=hG9SzQxaCm8)
+// TODO Variable jump height
+// TODO Multi-jump support
+// TODO Public get state functions for interfacing with other scripts
+
+// STRETCH GOALS
+// Hitbox pinching (https://www.youtube.com/watch?v=HCnZhs-92j0)
+// One way platforms / fall through (only if grounded, and if held before becoming grounded, wait 0.2 sec) 
+// Crouch / slide
+// Moving platform support
 
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(SpriteRenderer))]
@@ -152,7 +156,7 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		Debug.DrawLine(tr, br, rayColour, 0);
 	}
 	
-	public void Move(float dir) {
+	private void Move(float dir) {
 		if (_isGrounded || _airControl) {
 			Vector3 targetVelocity = new Vector2(dir * _moveSpeeed * Time.deltaTime, _rb.velocity.y);
 			_rb.velocity = Vector3.SmoothDamp(_rb.velocity, targetVelocity, ref _velocity, _movementSmoothing);
@@ -163,7 +167,7 @@ public class PlatformerCharacterController2D : MonoBehaviour {
 		}
 	}
 	
-	public void Jump() {
+	private void Jump() {
 		if (_isGrounded || _coyoteBuffer > 0) {
 			_isGrounded = false;
 			_rb.AddForce(new Vector2(0f, _jumpForce));
